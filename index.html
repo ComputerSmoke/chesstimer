@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chess Timer Online</title>
+        <style>
+            body {
+                font-size: 300%;
+                text-align: center;
+            }
+            button {
+                font-size: 120%;
+            }
+            input {
+                font-size: 120%;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="joinDiv">
+            <h1>Chess Timer Online</h1>
+            <input id="code" placeholder="Code"/>
+            <button id="join" onclick="join()">Join</button>
+            <br/>
+            <br/>
+            <input id="time" placeholder="Time (Minutes)"/>
+            <button id="create" onclick="create()">Create</button>
+        </div>
+        <div id="roomDiv" style="display:none">
+            <h3 id="codeH"></h3>
+            <br/>
+            <button id="switchButton" onclick="swap()">Switch</button>
+            <button id="pauseButton" onclick="pause()">Start/Stop</button>
+            <h1 id="t1" style="color:blue"></h1>
+            <br/>
+            <h1 id="t2" style="color:green"></h1>
+        </div>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="./client/js/app.js"></script>
+    </body>
+</html>
