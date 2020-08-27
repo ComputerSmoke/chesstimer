@@ -57,7 +57,7 @@ function join() {
     });
 }
 
-//TODO switch which timer is counting down
+//switch which timer is counting down
 function swap() {
     var data = {code, s: 0};
     $.post('./switch',data,function(data,status) {
@@ -74,7 +74,7 @@ function swap() {
     });
 }
 
-//TODO pause/unpause timer
+//pause/unpause timer
 function pause() {
     var s = 1;
     if(!room.p) {
