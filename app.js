@@ -1,188 +1,133 @@
-//some of the HTML elements
-var joinDiv = document.getElementById('joinDiv');
-var roomDiv = document.getElementById('roomDiv');
-var codeInput = document.getElementById('code');
-var timeInput = document.getElementById('time');
-var t1h = document.getElementById('t1');
-var t2h = document.getElementById('t2');
-var pauseB = document.getElementById('pauseButton');
-var codeH = document.getElementById('codeH');
+//dependencies
+var express = require('express');
+var app = express();
+var serv = require('http').Server(app);
+const axios = require('axios');
+const bodyParser = require('body-parser');
 
-//the room id
-var code = 0;
-//the room
-var room = {};
 
-//POST the creation request to server and open room div if successful
-function create() {
-    console.log('time: ' + timeInput.value);
-    var data = {time: parseInt(timeInput.value)};
-    $.post('./create',data,function(data,status) {
-        if(data == 'invalid') {
-            alert("Time must be between 1 and 740 minutes.");
+//store room info
+var rooms = {};
+
+//listen on http port 2200
+serv.listen(2200);
+console.log('started');
+//serve home file
+app.get('/',async function(req, res) {
+    res.sendFile(__dirname+'/client/index.html');
+});
+app.use('/client',express.static(__dirname+'/client'));
+app.use(bodyParser.urlencoded({extended: true}));
+
+//respond to room creation requests
+app.post('/create',async function(req,res) {
+    console.log('got post');
+    try {
+        if(!req || !req.body) return;
+        var data = req.body;
+        if(typeof data.time != 'string' || !parseInt(data.time) || data.time < 1 || data.time > 740) {
+            res.send('invalid');
+            console.log('got num of type: ' + typeof data.time);
             return;
         }
-        if(data == 'err') {
-            alert("Error, please refresh the page and try again.");
-            return;
+        data.time = parseInt(data.time)*60;
+        var code = Math.floor(100000 + Math.random() * 900000).toString();
+        while(rooms[code]) {
+            code = Math.floor(100000 + Math.random() * 900000).toString();
         }
-        code = data;
-        joinDiv.style.display = "none";
-        roomDiv.style.display = "inline-block";
-        codeH.innerHTML = "Code: " + code;
-        setUpdateInterval();
-    });
-}
+        rooms[code] = {t1: data.time, t2: data.time, m1: true, p: true, t: 0};
 
-//try to get initial room info from code in input box
-function join() {
-    var id = codeInput.value;
-    var data = {code: id};
-    $.post('./info',data,function(data,status) {
-        if(data == 'invalid') {
-            console.log('failed room check with id ' + id)
-            alert("Invalid Room Code.");
-            console.log("failed room check with code " + code);
-            alert('It appears this room no longer exists.');
-        } else if(data == 'err') {
-            alert("Error, please refresh the page and try again.");
-        } else {
-            room = data;
-            code = id;
-            joinDiv.style.display = "none";
-            roomDiv.style.display = "inline-block";
-            codeH.innerHTML = "Code: " + id;
-            setUpdateInterval();
-        }
-    });
-}
+        res.send(code);
+    } catch(e) {
+        console.error(e);
+        res.send('err');
+    }
+});
 
-//TODO switch which timer is counting down
-function swap() {
-    var data = {code, s: 0};
-    $.post('./switch',data,function(data,status) {
-        if(data == 'invalid') {
-            alert("Invalid Room Code.");
-            return false;
-        }
-        if(data == 'err') {
-            alert("Error, please refresh the page and try again.");
-            return false;
-        }
-        room = data;
-        return true;
-    });
-}
+//respond to room info requests
+app.post('/info',async function(req,res) {
+    if(!req || !req.body) return;
+    var data = req.body;
+    if(!roomExists(data.code)) {
+        console.log('room with code' + data.code + 'did not exist');
+        res.send("invalid");
+        return;
+    }
+    res.send(rooms[data.code]);
+});
 
-//TODO pause/unpause timer
-function pause() {
-    var s = 1;
-    if(!room.p) {
-        s = 2;
+//respond to switch/start/stop timer requests
+app.post('/switch',async function(req, res) {
+    if(!req || !req.body) return;
+    var data = req.body;
+    if(!roomExists(data.code)) {
+        res.send('invalid');
+        return;
     }
-    var data = {code, s};
-    $.post('./switch',data,function(data,status) {
-        if(data == 'invalid') {
-            alert("Invalid Room Code.");
-            return false;
-        }
-        if(data == 'err') {
-            alert("Error, please refresh the page and try again.");
-            return false;
-        }
-        room = data;
-        return true;
-    });
-}   
+    var room = rooms[data.code];
+    if(data.s == 0) {
+        //switch
+        room.m1 = !room.m1;
+    } else if(data.s == 1) {
+        //pause
+        room.p = false;
+    } else if(data.s == 2) {
+        //unpause
+        room.p = true;
+    }
+    res.send(room);
+});
 
-//update the room display
-function updateRoomDisplay() {
-    var h1 = Math.floor(room.t1/3600);
-    var m1 = Math.floor(room.t1/60)-h1*60;
-    var s1 = Math.floor(room.t1)-h1*3600-m1*60;
-    
-    var hs1 = h1.toString();
-    if(h1 < 10) {
-        hs1 = "0" + hs1;
-    }
-    var ms1 = m1.toString();
-    if(m1 < 10) {
-        ms1 = "0" + ms1;
-    }
-    var ss1 = s1.toString();
-    if(s1 < 10) {
-        ss1 = "0" + ss1;
-    }
-    t1h.innerHTML = hs1 + ":" + ms1 + ":" + ss1;
-    
-    var h2 = Math.floor(room.t2/3600);
-    var m2 = Math.floor(room.t2/60)-h2*60;
-    var s2 = Math.floor(room.t2)-h2*3600-m2*60;
-    var hs2 = h2.toString();
-    if(h2 < 10) {
-        hs2 = "0" + hs2;
-    }
-    var ms2 = m2.toString();
-    if(m2 < 10) {
-        ms2 = "0" + ms2;
-    }
-    var ss2 = s2.toString();
-    if(s2 < 10) {
-        ss2 = "0" + ss2;
-    }
-    t2h.innerHTML = hs2 + ":" + ms2 + ":" + ss2;
-
-
-    if(room.m1) {
-        t1h.style["text-decoration"] = "underline";
-        t2h.style["text-decoration"] = "none";
-    } else {
-        t1h.style["text-decoration"] = "none";
-        t2h.style["text-decoration"] = "underline";
-    }
-
-    if(room.t1 <=0 ) {
-        t1h.style.color = "red";
-    }
-    if(room.t2 <= 0) {
-        t2h.style.color = "red";
+//reduce room timer value
+function roomTick(delta, room) {
+    if(room.p) return;
+    if(room.m1 && room.t1 > 0) {
+        room.t1 -= delta;
+    } else if(room.t2 > 0) {
+        room.t2 -= delta;
     }
 }
 
-
-//update room info from server every second
-function setUpdateInterval() {
-    var roomInfo = setInterval(function() {
-        var data = {code};
-        $.post('./info',data,function(data,status) {
-            if(data == 'invalid') {
-                alert("Invalid Room Code.");
-                clearInterval(roomInfo);
-                console.log("failed room check with code " + code);
-                alert('It appears this room no longer exists.');
-            } else if(data == 'err') {
-                alert("Error, please refresh the page and try again.");
-            } else {
-                room = data;
-            }
-        });
-        updateRoomDisplay();
-    }, 1000);
-}
-
-//update room clock locally between server updates
-var prevTime = performance.now();
+//countdown on rooms
+var prevTime = process.hrtime()[0]*1e9+process.hrtime()[1];
 setInterval(function() {
-    var time = performance.now();
-    var delta = (time-prevTime)/1000;
+    var time = process.hrtime()[0]*1e9+process.hrtime()[1];
+    var delta = (time-prevTime)/1e9;
     prevTime = time;
-    if(room && !room.p) {
-        if(room.m1 && room.t1 > 0) {
-            room.t1 -= delta;
-            updateRoomDisplay();
-        } else if(!room.m1 && room.t2 > 0) {
-            room.t2 -= delta;
-            updateRoomDisplay();
+    
+    var roomArray = Object.keys(rooms);
+    for(var i = 0; i < roomArray.length; i++) {
+        var room = rooms[roomArray[i]];
+        roomTick(delta, room);
+    }
+}, 500);
+
+//remove rooms after 24-48 hours
+setInterval(function() {
+    var roomArray = Object.keys(rooms);
+    for(var i = 0; i < roomArray.length; i++) {
+        var room = rooms[roomArray[i]];
+        if(room.t == 0) {
+            room.t++;
+        } else {
+            delete[room];
         }
     }
-}, 100);
+},86400000);
+
+//validate room exists given code
+function roomExists(code) {
+    try {
+        console.log("checking if room with code: " + code + " exists");
+        console.log(rooms[code]);
+        if(code == null || code == undefined || typeof code != 'string' || !rooms[code]) {
+            console.log("it's bad");
+            return false;
+        }
+        console.log("it's good");
+        return true;
+    } catch(e) {
+        console.error(e);
+        return false;
+    }
+}
