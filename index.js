@@ -3,6 +3,8 @@ var joinDiv = document.getElementById('joinDiv');
 var roomDiv = document.getElementById('roomDiv');
 var codeInput = document.getElementById('code');
 var timeInput = document.getElementById('time');
+var timeBufferInput = document.getElementById('timeBuffer');
+var timeIncrementInput = document.getElementById('timeIncrement');
 var t1h = document.getElementById('t1');
 var t2h = document.getElementById('t2');
 var pauseB = document.getElementById('pauseButton');
@@ -16,7 +18,11 @@ var room = {};
 //POST the creation request to server and open room div if successful
 function create() {
     console.log('time: ' + timeInput.value);
-    var data = {time: parseInt(timeInput.value)};
+    var data = {
+        time: parseInt(timeInput.value),
+        buffer: parseInt(timeBufferInput.value),
+        increment: parseInt(timeIncrementInput.value),
+    };
     $.post('./create',data,function(data,status) {
         if(data == 'invalid') {
             alert("Time must be between 1 and 740 minutes.");
@@ -60,6 +66,7 @@ function join() {
 //switch which timer is counting down
 function swap() {
     var data = {code, s: 0};
+    room.activeBuffer = room.buffer; //just to keep the local update smooth
     $.post('./switch',data,function(data,status) {
         if(data == 'invalid') {
             alert("Invalid Room Code.");
@@ -173,8 +180,16 @@ function setUpdateInterval() {
 //update room clock locally between server updates
 var prevTime = performance.now();
 setInterval(function() {
-    var time = performance.now();
-    var delta = (time-prevTime)/1000;
+    let time = performance.now();
+    let delta = (time-prevTime)/1000;
+    // Check buffer before for local updates to avoid backwards ticks
+    if (room && room.activeBuffer && room.activeBuffer > 0) {
+        room.activeBuffer -= delta;
+        delta = -1* room.activeBuffer; 
+        if (delta < 0) {
+            return;
+        }
+    }
     prevTime = time;
     if(room && !room.p) {
         if(room.m1 && room.t1 > 0) {

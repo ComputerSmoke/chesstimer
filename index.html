@@ -18,12 +18,19 @@
     <body>
         <div id="joinDiv">
             <h1>Chess Timer Online</h1>
-            <input id="code" placeholder="Code"/>
+            <input id="code" placeholder="Code" size=15/>
             <button id="join" onclick="join()">Join</button>
             <br/>
             <br/>
-            <input id="time" placeholder="Time (Minutes)"/>
+            <input id="time" placeholder="Time (Minutes)" size=15/>
             <button id="create" onclick="create()">Create</button>
+            <div id="timeSettings" style="padding-top: 50px">
+            <strong>Advanced Time Settings</strong>
+                <div id="row">
+                    <input id="timeBuffer" placeholder="Buffer (Seconds)" size=15/>
+                    <input id="timeIncrement" placeholder="Increment (Seconds)" size=15/>
+                </div>
+            </div>
         </div>
         <div id="roomDiv" style="display:none">
             <h3 id="codeH"></h3>
