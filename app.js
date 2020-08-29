@@ -35,7 +35,16 @@ app.post('/create',async function(req,res) {
         while(rooms[code]) {
             code = Math.floor(100000 + Math.random() * 900000).toString();
         }
-        rooms[code] = {t1: data.time, t2: data.time, m1: true, p: true, t: 0};
+        let buffer = parseInt(data.buffer) || 0
+        rooms[code] = {t1: data.time, 
+            t2: data.time, 
+            buffer: buffer, 
+            activeBuffer: buffer,
+            increment: parseInt(data.increment) || 0,
+            m1: true, 
+            p: true, 
+            t: 0
+        };
 
         res.send(code);
     } catch(e) {
@@ -66,8 +75,16 @@ app.post('/switch',async function(req, res) {
     }
     var room = rooms[data.code];
     if(data.s == 0) {
+        //apply increment
+        if (room.m1) {
+            room.t1 += room.increment;
+        } else {
+            room.t2 += room.increment;
+        }
         //switch
         room.m1 = !room.m1;
+        //reset buffer TODO: (Should this also happen on unpause?)
+        room.activeBuffer = room.buffer;
     } else if(data.s == 1) {
         //pause
         room.p = false;
@@ -81,6 +98,13 @@ app.post('/switch',async function(req, res) {
 //reduce room timer value
 function roomTick(delta, room) {
     if(room.p) return;
+    if (room.activeBuffer > 0) {
+        room.activeBuffer -= delta;
+        delta = -1* room.activeBuffer; 
+        if (delta < 0) {
+            return;
+        }
+    }
     if(room.m1 && room.t1 > 0) {
         room.t1 -= delta;
     } else if(room.t2 > 0) {
